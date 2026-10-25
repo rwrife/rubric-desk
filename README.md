@@ -44,7 +44,8 @@ Rubric grading tools live inside LMS platforms: accounts, cloud rosters, subscri
 ## Non-goals
 
 - No other build framework: React Native, Expo, Kotlin Multiplatform, .NET MAUI, Unity, and native Swift-only are all prohibited — the app is Flutter (Windows + Android + iOS from one codebase)
-- The scoring grid is a single `ScoringWorkspaceLayout` seam (grid + detail); it is the only layout abstraction screens code against
+- Platform-native adaptive strategy A: Cupertino on iOS, Material 3 on Android, Fluent on Windows; never copy another OS's look. The scoring grid is a single `ScoringWorkspaceLayout` seam (grid + detail).
+- Real `AppStore/icon.png` generated via spark-media image is pending issue #6; no placeholder will be shipped.
 - No accounts, no cloud sync, no backend, no analytics — the app performs zero network requests on any platform
 - No LMS/SIS integration, no gradebook import/export beyond plain CSV/text
 - No AI grading, no essay scoring, no OCR of handwritten work
