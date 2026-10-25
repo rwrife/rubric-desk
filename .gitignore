@@ -1,0 +1,27 @@
+# Flutter / Dart
+.dart_tool/
+.packages
+build/
+.flutter-plugins
+.flutter-plugins-dependencies
+pubspec.lock.bak
+
+# IDEs
+.idea/
+.vscode/
+*.iml
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Test / coverage artifacts
+coverage/
+
+# Local signing material (never commit)
+*.p8
+*.p12
+*.keystore
+*.mobileprovision
+*.provisionprofile
+asc_private/

@@ -1,0 +1,3 @@
+Rubric Desk is being built as an offline rubric scoring workspace for teachers and tutors. Plan criteria and score levels, mark evidence per student, see where each total comes from, and export feedback and grade sheets without an account or cloud connection.
+
+Planned for Windows, Android phones/tablets, and iPhone/iPad. These features are in development and not yet available as a downloadable app. No AI grading or school-system integration is planned.
