@@ -62,7 +62,71 @@ class SqliteLedgerDatabase {
         rethrow;
       }
     }
+    if (version < 2) {
+      _db.execute('BEGIN IMMEDIATE TRANSACTION;');
+      try {
+        for (final statement in Migrations.v2) {
+          _db.execute(statement);
+        }
+        _db.execute('PRAGMA user_version = 2;');
+        _db.execute('COMMIT;');
+      } catch (_) {
+        _db.execute('ROLLBACK;');
+        rethrow;
+      }
+    }
   }
+
+  List<({String id, String label})> get courses => _db
+      .select('SELECT id, label FROM courses ORDER BY label, id;')
+      .map((r) => (id: r['id'] as String, label: r['label'] as String))
+      .toList();
+
+  List<({String id, String label})> students(String courseId) => _db
+      .select(
+        'SELECT id, label FROM students WHERE course_id = ? ORDER BY label, id;',
+        [courseId],
+      )
+      .map((r) => (id: r['id'] as String, label: r['label'] as String))
+      .toList();
+
+  void saveCourse(String id, String label) {
+    if (id.isEmpty || label.trim().isEmpty) {
+      throw ArgumentError('course label required');
+    }
+    _db.execute(
+      'INSERT INTO courses (id, label) VALUES (?, ?) '
+      'ON CONFLICT(id) DO UPDATE SET label = excluded.label;',
+      [id, label.trim()],
+    );
+  }
+
+  void saveStudent(String id, String courseId, String label) {
+    if (id.isEmpty || label.trim().isEmpty) {
+      throw ArgumentError('student label required');
+    }
+    _db.execute(
+      'INSERT INTO students (id, course_id, label) VALUES (?, ?, ?) '
+      'ON CONFLICT(id) DO UPDATE SET label = excluded.label WHERE course_id = excluded.course_id;',
+      [id, courseId, label.trim()],
+    );
+  }
+
+  List<Rubric> get latestRubrics => _db
+      .select(
+        'SELECT r.body_json FROM rubrics r WHERE revision = '
+        '(SELECT MAX(revision) FROM rubrics WHERE id = r.id) ORDER BY r.title, r.id;',
+      )
+      .map((r) => rubricFromJson(r['body_json'] as String))
+      .toList();
+
+  List<Assignment> assignments(String courseId) => _db
+      .select(
+        'SELECT id FROM assignments WHERE course_id = ? ORDER BY created_at, id;',
+        [courseId],
+      )
+      .map((r) => getAssignment(r['id'] as String)!)
+      .toList();
 
   void saveRubricRevision(Rubric rubric) {
     final existing = _db.select(
