@@ -193,9 +193,9 @@ void main() {
     () {
       final db = SqliteLedgerDatabase.inMemory();
       addTearDown(db.close);
-      expect(db.currentVersion, 1);
+      expect(db.currentVersion, 2);
       db.migrate();
-      expect(db.currentVersion, 1);
+      expect(db.currentVersion, 2);
       final v1 = rubric();
       db.saveRubricRevision(v1);
       final assignment = Assignment(

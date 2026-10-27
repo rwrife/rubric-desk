@@ -160,7 +160,22 @@ Rubric rubricFromJson(String raw) {
 /// Canonical SQL statements for schema migrations.
 /// Pure Dart strings so they run in sqlite3 or in-memory drivers across all platforms.
 class Migrations {
-  static const int currentVersion = 1;
+  static const int currentVersion = 2;
+
+  static const List<String> v2 = [
+    '''CREATE TABLE courses (
+      id TEXT PRIMARY KEY,
+      label TEXT NOT NULL CHECK (length(trim(label)) > 0)
+    );''',
+    '''CREATE TABLE students (
+      id TEXT PRIMARY KEY,
+      course_id TEXT NOT NULL REFERENCES courses(id),
+      label TEXT NOT NULL CHECK (length(trim(label)) > 0)
+    );''',
+  ];
+
+  // ponytail: IDs remain stable on rename; deletion waits for a safe archive flow.
+  // Existing assignments.course_id predates courses; legacy rows remain readable.
 
   /// Ordered migration steps. Runs inside an exclusive transaction.
   static const List<String> v1 = [
@@ -230,10 +245,49 @@ class Migrations {
 /// Uses standard Dart map storage to keep tests hermetic without platform C-bindings,
 /// matching the exact SQLite schema and query semantics.
 class MemoryLedgerRepository {
+  final Map<String, String> _courses = {};
+  final Map<String, List<({String id, String label})>> _students = {};
   final Map<String, Map<int, Rubric>> _rubrics = {};
   final Map<String, Assignment> _assignments = {};
   final List<LedgerEntry> _ledger = [];
   int _sequence = 0;
+
+  List<({String id, String label})> get courses =>
+      _courses.entries.map((e) => (id: e.key, label: e.value)).toList()
+        ..sort((a, b) => a.label.compareTo(b.label));
+
+  List<({String id, String label})> students(String courseId) =>
+      List.of(_students[courseId] ?? [])
+        ..sort((a, b) => a.label.compareTo(b.label));
+
+  void saveCourse(String id, String label) {
+    if (id.isEmpty || label.trim().isEmpty) {
+      throw ArgumentError('course label required');
+    }
+    _courses[id] = label.trim();
+  }
+
+  void saveStudent(String id, String courseId, String label) {
+    if (id.isEmpty || label.trim().isEmpty) {
+      throw ArgumentError('student label required');
+    }
+    final list = _students.putIfAbsent(courseId, () => []);
+    list.removeWhere((s) => s.id == id);
+    list.add((id: id, label: label.trim()));
+  }
+
+  List<Rubric> get latestRubrics =>
+      _rubrics.values
+          .map(
+            (revs) =>
+                revs.values.reduce((a, b) => a.revision > b.revision ? a : b),
+          )
+          .toList()
+        ..sort((a, b) => a.title.compareTo(b.title));
+
+  List<Assignment> assignments(String courseId) =>
+      _assignments.values.where((a) => a.courseId == courseId).toList()
+        ..sort((a, b) => a.createdAt.compareTo(b.createdAt));
 
   void saveRubricRevision(Rubric rubric) {
     final revisions = _rubrics.putIfAbsent(rubric.id, () => {});
