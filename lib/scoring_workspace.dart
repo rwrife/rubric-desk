@@ -196,59 +196,62 @@ class _ScoringWorkspaceLayoutState extends State<ScoringWorkspaceLayout> {
         : b.excused
         ? 'Excused · excluded from denominator'
         : '${b.earned}/${c.maximumPoints} points';
-    return ListView(
+    return SingleChildScrollView(
       key: const Key('score-inspector'),
       padding: const EdgeInsets.all(16),
-      children: [
-        Text(
-          students.firstWhere((x) => x.id == studentId).label,
-          style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
-        ),
-        Semantics(
-          liveRegion: true,
-          child: Text(total(s), key: const Key('score-total')),
-        ),
-        Text(
-          'Counted weight ${s.countedWeight}; excused weight ${s.excusedWeight}',
-        ),
-        const SizedBox(height: 16),
-        Text(
-          '${c.name} · weight ${c.weight}',
-          style: const TextStyle(fontSize: 18),
-        ),
-        Text(current, key: const Key('mark-status')),
-        noteField(),
-        for (var i = 0; i < c.levels.length; i++)
-          button(
-            '$i: ${c.levels[i].label} (${c.levels[i].points})',
-            () => record(MarkKind.level, levelId: c.levels[i].id),
-            key: Key('level-$i'),
-          ),
-        button(
-          'Excuse',
-          () => record(MarkKind.excused),
-          key: const Key('excuse'),
-        ),
-        button(
-          'Clear to unmarked',
-          () => record(MarkKind.unmarked),
-          key: const Key('unmark'),
-        ),
-        button('Undo last mark', undo, key: const Key('undo-mark')),
-        const SizedBox(height: 16),
-        const Text('Breakdown', style: TextStyle(fontSize: 18)),
-        for (final part in s.breakdown)
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
           Text(
-            '${part.criterion.name} · weight ${part.criterion.weight}: '
-            '${part.unmarked
-                ? 'unmarked'
-                : part.excused
-                ? 'excused'
-                : '${part.earned}/${part.criterion.maximumPoints}'}'
-            '${part.mark?.note.isNotEmpty == true ? ' · ${part.mark!.note}' : ''}',
+            students.firstWhere((x) => x.id == studentId).label,
+            style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
           ),
-        if (error != null) Semantics(liveRegion: true, child: Text(error!)),
-      ],
+          Semantics(
+            liveRegion: true,
+            child: Text(total(s), key: const Key('score-total')),
+          ),
+          Text(
+            'Counted weight ${s.countedWeight}; excused weight ${s.excusedWeight}',
+          ),
+          const SizedBox(height: 16),
+          Text(
+            '${c.name} · weight ${c.weight}',
+            style: const TextStyle(fontSize: 18),
+          ),
+          Text(current, key: const Key('mark-status')),
+          noteField(),
+          for (var i = 0; i < c.levels.length; i++)
+            button(
+              '$i: ${c.levels[i].label} (${c.levels[i].points})',
+              () => record(MarkKind.level, levelId: c.levels[i].id),
+              key: Key('level-$i'),
+            ),
+          button(
+            'Excuse',
+            () => record(MarkKind.excused),
+            key: const Key('excuse'),
+          ),
+          button(
+            'Clear to unmarked',
+            () => record(MarkKind.unmarked),
+            key: const Key('unmark'),
+          ),
+          button('Undo last mark', undo, key: const Key('undo-mark')),
+          const SizedBox(height: 16),
+          const Text('Breakdown', style: TextStyle(fontSize: 18)),
+          for (final part in s.breakdown)
+            Text(
+              '${part.criterion.name} · weight ${part.criterion.weight}: '
+              '${part.unmarked
+                  ? 'unmarked'
+                  : part.excused
+                  ? 'excused'
+                  : '${part.earned}/${part.criterion.maximumPoints}'}'
+              '${part.mark?.note.isNotEmpty == true ? ' · ${part.mark!.note}' : ''}',
+            ),
+          if (error != null) Semantics(liveRegion: true, child: Text(error!)),
+        ],
+      ),
     );
   }
 

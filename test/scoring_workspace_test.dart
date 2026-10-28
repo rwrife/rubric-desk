@@ -103,22 +103,25 @@ void main() {
               findsOneWidget,
             );
           }
+          await tester.ensureVisible(find.byKey(const Key('level-0')));
           await tester.tap(find.byKey(const Key('level-0')));
-          await tester.pump();
+          await tester.pumpAndSettle();
           expect(
             db.score(assignmentId: 'a', studentId: 'student').total,
             isNull,
           );
           expect(find.text('0/4 points'), findsOneWidget);
+          await tester.ensureVisible(find.byKey(const Key('excuse')));
           await tester.tap(find.byKey(const Key('excuse')));
-          await tester.pump();
+          await tester.pumpAndSettle();
           expect(
             find.text('Excused · excluded from denominator'),
             findsOneWidget,
           );
           expect(db.auditTrail('a').length, 2);
+          await tester.ensureVisible(find.byKey(const Key('unmark')));
           await tester.tap(find.byKey(const Key('unmark')));
-          await tester.pump();
+          await tester.pumpAndSettle();
           expect(find.text('Unmarked (unknown)'), findsOneWidget);
           expect(db.auditTrail('a').length, 3);
           expect(tester.takeException(), isNull);
@@ -143,16 +146,19 @@ void main() {
         find.byKey(const Key('mark-note')),
         'Quoted evidence',
       );
+      await tester.ensureVisible(find.byKey(const Key('level-1')));
       await tester.tap(find.byKey(const Key('level-1')));
-      await tester.pump();
+      await tester.pumpAndSettle();
       expect(
         db.currentMarksFor(assignmentId: 'a', studentId: 'student').single.note,
         'Quoted evidence',
       );
+      await tester.ensureVisible(find.byKey(const Key('excuse')));
       await tester.tap(find.byKey(const Key('excuse')));
-      await tester.pump();
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(find.byKey(const Key('undo-mark')));
       await tester.tap(find.byKey(const Key('undo-mark')));
-      await tester.pump();
+      await tester.pumpAndSettle();
       expect(
         db
             .currentMarksFor(assignmentId: 'a', studentId: 'student')
@@ -161,10 +167,12 @@ void main() {
         'good',
       );
       expect(db.auditTrail('a').length, 3);
+      await tester.ensureVisible(find.byKey(const Key('criterion-reason')));
       await tester.tap(find.byKey(const Key('criterion-reason')));
-      await tester.pump();
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(find.byKey(const Key('excuse')));
       await tester.tap(find.byKey(const Key('excuse')));
-      await tester.pump();
+      await tester.pumpAndSettle();
       expect(db.score(assignmentId: 'a', studentId: 'student').percent, 100);
       expect(find.textContaining('1 excused'), findsWidgets);
     },
