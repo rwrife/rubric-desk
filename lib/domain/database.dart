@@ -228,7 +228,7 @@ class SqliteLedgerDatabase {
         );
       }
     } else if (levelId != null) {
-      throw ArgumentError('excused mark cannot carry a levelId');
+      throw ArgumentError('non-level mark cannot carry a levelId');
     }
 
     final ts = (recordedAt ?? DateTime.now()).toUtc();
