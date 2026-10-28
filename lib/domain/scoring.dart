@@ -171,6 +171,9 @@ enum MarkKind {
 
   /// Explicitly excused: excluded from the denominator and disclosed.
   excused,
+
+  /// Append-only retraction of a previous mark; resolves to unknown.
+  unmarked,
 }
 
 /// One ledger fact. The ledger itself is append-only (see ledger.dart);
@@ -288,7 +291,8 @@ class CriterionBreakdown {
   final bool counted;
 
   bool get excused => mark?.kind == MarkKind.excused;
-  bool get unmarked => mark == null;
+  // ponytail: retracted rows retain note/history; score treats them as unknown.
+  bool get unmarked => mark == null || mark!.kind == MarkKind.unmarked;
 }
 
 /// Result of scoring one student against one pinned rubric revision.
@@ -347,8 +351,8 @@ StudentScore scoreStudent(Rubric rubric, List<Mark> marks) {
     if (mark.kind == MarkKind.level && mark.levelId == null) {
       throw ArgumentError('level mark needs a level id');
     }
-    if (mark.kind == MarkKind.excused && mark.levelId != null) {
-      throw ArgumentError('excused mark must not carry a level id');
+    if (mark.kind != MarkKind.level && mark.levelId != null) {
+      throw ArgumentError('non-level mark must not carry a level id');
     }
     byCriterion[mark.criterionId] = mark;
   }
@@ -361,7 +365,7 @@ StudentScore scoreStudent(Rubric rubric, List<Mark> marks) {
     final mark = byCriterion[criterion.id];
     final excused = mark?.kind == MarkKind.excused;
     int? earned;
-    if (mark != null && !excused) {
+    if (mark != null && mark.kind == MarkKind.level) {
       final level = criterion.levels
           .where((l) => l.id == mark.levelId)
           .firstOrNull;

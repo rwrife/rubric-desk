@@ -8,6 +8,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:rubric_desk/domain/database.dart';
 import 'package:rubric_desk/domain/ledger.dart';
 import 'package:rubric_desk/domain/scoring.dart';
+import 'package:rubric_desk/scoring_workspace.dart';
 import 'package:uuid/uuid.dart';
 
 void main() async {
@@ -377,8 +378,20 @@ class _AuthoringPageState extends State<AuthoringPage> {
                 if (courseId != null && active != null) ...[
                   heading('Assignments'),
                   for (final a in widget.store.assignments(courseId!))
-                    Text(
-                      '${a.title} · ${a.rubricId} revision ${a.rubricRevision}',
+                    button(
+                      '${a.title} · revision ${a.rubricRevision} · Score',
+                      () {
+                        Navigator.of(context).push(
+                          platformRoute(
+                            widget.platform,
+                            ScoringWorkspaceLayout(
+                              store: widget.store,
+                              assignment: a,
+                              platform: widget.platform,
+                            ),
+                          ),
+                        );
+                      },
                     ),
                   field('Assignment title', assignment),
                   button(
