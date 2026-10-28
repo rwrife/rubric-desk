@@ -1,6 +1,5 @@
 import 'package:fluent_ui/fluent_ui.dart' as fluent;
 import 'package:flutter/cupertino.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart' as material;
 import 'package:flutter/services.dart';
 import 'package:rubric_desk/domain/database.dart';
@@ -221,7 +220,7 @@ class _ScoringWorkspaceLayoutState extends State<ScoringWorkspaceLayout> {
         noteField(),
         for (var i = 0; i < c.levels.length; i++)
           button(
-            '${i}: ${c.levels[i].label} (${c.levels[i].points})',
+            '$i: ${c.levels[i].label} (${c.levels[i].points})',
             () => record(MarkKind.level, levelId: c.levels[i].id),
             key: Key('level-$i'),
           ),
