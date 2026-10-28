@@ -133,6 +133,12 @@ void main() {
   testWidgets(
     'undo appends previous mark, note survives, excused changes denominator',
     (tester) async {
+      tester.view.physicalSize = const Size(390, 900);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(() {
+        tester.view.resetPhysicalSize();
+        tester.view.resetDevicePixelRatio();
+      });
       await tester.pumpWidget(
         material.MaterialApp(
           home: ScoringWorkspaceLayout(
