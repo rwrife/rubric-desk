@@ -139,7 +139,9 @@ class SqliteLedgerDatabase {
       throw const FormatException('Backup contains broken references');
     }
     for (final row in _db.select('SELECT * FROM mark_ledger;')) {
-      final entry = LedgerEntry.fromMap({for (final key in row.keys) key: row[key]});
+      final entry = LedgerEntry.fromMap({
+        for (final key in row.keys) key: row[key],
+      });
       if (entry.sequence <= 0) {
         throw const FormatException('Invalid ledger sequence');
       }

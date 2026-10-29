@@ -158,7 +158,8 @@ class _AuthoringPageState extends State<AuthoringPage> {
       final raw = utf8.decode(bytes);
       final counts = widget.store.previewBackup(raw);
       if (!mounted) return;
-      final summary = 'Preview: ${counts['courses']} courses, ${counts['students']} students, '
+      final summary =
+          'Preview: ${counts['courses']} courses, ${counts['students']} students, '
           '${counts['rubrics']} rubric revisions, ${counts['assignments']} assignments, '
           '${counts['mark_ledger']} marks. Current data will be replaced.';
       final confirmed = await showGeneralDialog<bool>(
@@ -171,8 +172,15 @@ class _AuthoringPageState extends State<AuthoringPage> {
               title: const Text('Replace local data?'),
               content: Text(summary),
               actions: [
-                CupertinoDialogAction(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
-                CupertinoDialogAction(isDestructiveAction: true, onPressed: () => Navigator.pop(ctx, true), child: const Text('Restore')),
+                CupertinoDialogAction(
+                  onPressed: () => Navigator.pop(ctx, false),
+                  child: const Text('Cancel'),
+                ),
+                CupertinoDialogAction(
+                  isDestructiveAction: true,
+                  onPressed: () => Navigator.pop(ctx, true),
+                  child: const Text('Restore'),
+                ),
               ],
             );
           }
@@ -181,8 +189,14 @@ class _AuthoringPageState extends State<AuthoringPage> {
               title: const Text('Replace local data?'),
               content: Text(summary),
               actions: [
-                fluent.Button(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
-                fluent.Button(onPressed: () => Navigator.pop(ctx, true), child: const Text('Restore')),
+                fluent.Button(
+                  onPressed: () => Navigator.pop(ctx, false),
+                  child: const Text('Cancel'),
+                ),
+                fluent.Button(
+                  onPressed: () => Navigator.pop(ctx, true),
+                  child: const Text('Restore'),
+                ),
               ],
             );
           }
@@ -190,8 +204,14 @@ class _AuthoringPageState extends State<AuthoringPage> {
             title: const Text('Replace local data?'),
             content: Text(summary),
             actions: [
-              TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
-              TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Restore')),
+              TextButton(
+                onPressed: () => Navigator.pop(ctx, false),
+                child: const Text('Cancel'),
+              ),
+              TextButton(
+                onPressed: () => Navigator.pop(ctx, true),
+                child: const Text('Restore'),
+              ),
             ],
           );
         },
