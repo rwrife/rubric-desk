@@ -14,6 +14,10 @@ dependencies:
   sqlite3_flutter_libs: ^0.6.0+eol
   path_provider: ^2.1.5
   uuid: ^4.5.1
+  share_plus: ^12.0.1
+  file_picker: ^10.3.8
+  # ponytail: system share/open pickers only; no network service.
+  # ponytail: provider plugins compile on platform CI before release.
   # ponytail: one private SQLite file; no sync layer.
 
 
