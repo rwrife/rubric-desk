@@ -1,10 +1,14 @@
+import 'dart:convert';
+
 import 'package:fluent_ui/fluent_ui.dart' as fluent;
+import 'package:share_plus/share_plus.dart';
+import 'package:rubric_desk/domain/exports.dart';
+import 'package:rubric_desk/domain/ledger.dart';
+import 'package:rubric_desk/domain/scoring.dart';
+import 'package:rubric_desk/domain/database.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart' as material;
 import 'package:flutter/services.dart';
-import 'package:rubric_desk/domain/database.dart';
-import 'package:rubric_desk/domain/ledger.dart';
-import 'package:rubric_desk/domain/scoring.dart';
 
 Route<T> platformRoute<T>(TargetPlatform platform, Widget page) =>
     platform == TargetPlatform.iOS
@@ -237,6 +241,48 @@ class _ScoringWorkspaceLayoutState extends State<ScoringWorkspaceLayout> {
             key: const Key('unmark'),
           ),
           button('Undo last mark', undo, key: const Key('undo-mark')),
+          const SizedBox(height: 16),
+          button('Share feedback', () {
+            if (studentId == null) return;
+            final s = students.firstWhere((x) => x.id == studentId);
+            final text = feedbackText(
+              s.label,
+              widget.assignment,
+              score(studentId!),
+            );
+            SharePlus.instance.share(
+              ShareParams(
+                text: text,
+                subject: '${widget.assignment.title} - ${s.label}',
+              ),
+            );
+          }, key: const Key('share-feedback')),
+          button('Share grade CSV', () {
+            final rows = [
+              for (final s in students) (label: s.label, score: score(s.id)),
+            ];
+            final csv = gradeCsv(widget.assignment, rows);
+            SharePlus.instance.share(
+              ShareParams(
+                files: [
+                  XFile.fromData(
+                    utf8.encode(csv),
+                    mimeType: 'text/csv',
+                    name: '${widget.assignment.title}-grades.csv',
+                  ),
+                ],
+                subject: '${widget.assignment.title} grades',
+              ),
+            );
+          }, key: const Key('share-csv')),
+          button('Share printable rubric', () {
+            SharePlus.instance.share(
+              ShareParams(
+                text: printableRubric(rubric),
+                subject: '${rubric.title} (rev ${rubric.revision})',
+              ),
+            );
+          }, key: const Key('share-rubric')),
           const SizedBox(height: 16),
           const Text('Breakdown', style: TextStyle(fontSize: 18)),
           for (final part in s.breakdown)

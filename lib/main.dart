@@ -1,5 +1,8 @@
 import 'dart:io';
+import 'dart:convert';
 
+import 'package:file_picker/file_picker.dart';
+import 'package:share_plus/share_plus.dart';
 import 'package:fluent_ui/fluent_ui.dart' as fluent;
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
@@ -92,6 +95,7 @@ class _AuthoringPageState extends State<AuthoringPage> {
   final bands = TextEditingController();
   final assignment = TextEditingController();
   final criteria = <Criterion>[];
+  String? backupMessage;
 
   @override
   void dispose() {
@@ -116,6 +120,115 @@ class _AuthoringPageState extends State<AuthoringPage> {
       setState(() => error = null);
     } catch (e) {
       setState(() => error = e.toString());
+    }
+  }
+
+  Future<void> shareBackup() async {
+    try {
+      final data = utf8.encode(widget.store.exportBackup());
+      await SharePlus.instance.share(
+        ShareParams(
+          files: [
+            XFile.fromData(
+              data,
+              mimeType: 'application/json',
+              name: 'rubric-desk-backup.json',
+            ),
+          ],
+          subject: 'Rubric Desk backup',
+        ),
+      );
+    } catch (e) {
+      if (mounted) setState(() => error = e.toString());
+    }
+  }
+
+  Future<void> restoreBackup() async {
+    try {
+      final picked = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['json'],
+        withData: true,
+      );
+      if (picked == null) return;
+      final bytes = picked.files.single.bytes;
+      if (bytes == null || bytes.length > 25 * 1024 * 1024) {
+        throw const FormatException('Backup must be at most 25 MB');
+      }
+      final raw = utf8.decode(bytes);
+      final counts = widget.store.previewBackup(raw);
+      if (!mounted) return;
+      final summary =
+          'Preview: ${counts['courses']} courses, ${counts['students']} students, '
+          '${counts['rubrics']} rubric revisions, ${counts['assignments']} assignments, '
+          '${counts['mark_ledger']} marks. Current data will be replaced.';
+      final confirmed = await showGeneralDialog<bool>(
+        context: context,
+        barrierDismissible: false,
+        barrierLabel: 'Restore backup confirmation',
+        pageBuilder: (ctx, _, _) {
+          if (widget.platform == TargetPlatform.iOS) {
+            return CupertinoAlertDialog(
+              title: const Text('Replace local data?'),
+              content: Text(summary),
+              actions: [
+                CupertinoDialogAction(
+                  onPressed: () => Navigator.pop(ctx, false),
+                  child: const Text('Cancel'),
+                ),
+                CupertinoDialogAction(
+                  isDestructiveAction: true,
+                  onPressed: () => Navigator.pop(ctx, true),
+                  child: const Text('Restore'),
+                ),
+              ],
+            );
+          }
+          if (widget.platform == TargetPlatform.windows) {
+            return fluent.ContentDialog(
+              title: const Text('Replace local data?'),
+              content: Text(summary),
+              actions: [
+                fluent.Button(
+                  onPressed: () => Navigator.pop(ctx, false),
+                  child: const Text('Cancel'),
+                ),
+                fluent.Button(
+                  onPressed: () => Navigator.pop(ctx, true),
+                  child: const Text('Restore'),
+                ),
+              ],
+            );
+          }
+          return AlertDialog(
+            title: const Text('Replace local data?'),
+            content: Text(summary),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx, false),
+                child: const Text('Cancel'),
+              ),
+              TextButton(
+                onPressed: () => Navigator.pop(ctx, true),
+                child: const Text('Restore'),
+              ),
+            ],
+          );
+        },
+      );
+      if (confirmed != true) return;
+      widget.store.restoreBackup(raw);
+      if (mounted) {
+        setState(() {
+          courseId = null;
+          rubricId = null;
+          studentId = null;
+          backupMessage = 'Backup restored';
+          error = null;
+        });
+      }
+    } catch (e) {
+      if (mounted) setState(() => error = e.toString());
     }
   }
 
@@ -201,6 +314,10 @@ class _AuthoringPageState extends State<AuthoringPage> {
     final content = ListView(
       children:
           [
+                heading('Local data'),
+                button('Share JSON backup', shareBackup),
+                button('Restore JSON backup', restoreBackup),
+                if (backupMessage != null) Text(backupMessage!),
                 heading('Courses'),
                 for (final c in courses)
                   button(

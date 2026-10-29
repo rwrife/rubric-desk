@@ -1,4 +1,5 @@
 import 'package:sqlite3/sqlite3.dart';
+import 'package:rubric_desk/domain/exports.dart';
 import 'package:rubric_desk/domain/ledger.dart';
 import 'package:rubric_desk/domain/scoring.dart';
 
@@ -30,6 +31,141 @@ class SqliteLedgerDatabase {
   }
 
   void close() => _db.close();
+
+  /// One consistent, versioned snapshot; SQLite preserves ledger sequence IDs.
+  String exportBackup() {
+    _db.execute('BEGIN TRANSACTION;');
+    try {
+      final tables = <String, List<Map<String, Object?>>>{};
+      for (final table in backupTables) {
+        tables[table] = _db
+            .select('SELECT * FROM $table;')
+            .map((row) => {for (final column in row.keys) column: row[column]})
+            .toList();
+      }
+      return encodeBackup(tables);
+    } finally {
+      _db.execute('ROLLBACK;');
+    }
+  }
+
+  /// Preview is validation only: it never changes live data.
+  Map<String, int> previewBackup(String raw) {
+    final tables = decodeBackup(raw);
+    final candidate = sqlite3.openInMemory();
+    try {
+      final temporary = SqliteLedgerDatabase(candidate)..migrate();
+      temporary._loadBackup(tables);
+      return {for (final name in backupTables) name: tables[name]!.length};
+    } finally {
+      candidate.close();
+    }
+  }
+
+  /// Replace all data atomically, after validating keys, pins, and rubric bodies.
+  void restoreBackup(String raw) {
+    final tables = decodeBackup(raw);
+    previewBackup(raw);
+    _db.execute('BEGIN IMMEDIATE TRANSACTION;');
+    try {
+      for (final name in backupTables.reversed) {
+        _db.execute('DELETE FROM $name;');
+      }
+      _loadBackup(tables);
+      _db.execute('COMMIT;');
+    } catch (_) {
+      _db.execute('ROLLBACK;');
+      rethrow;
+    }
+  }
+
+  void _loadBackup(Map<String, List<Map<String, Object?>>> tables) {
+    for (final name in backupTables) {
+      final columns = _db
+          .select('PRAGMA table_info($name);')
+          .map((row) => row['name'] as String)
+          .toList();
+      final required = _db
+          .select('PRAGMA table_info($name);')
+          .where((row) => row['notnull'] == 1 && row['dflt_value'] == null)
+          .map((row) => row['name'] as String)
+          .toSet();
+      final primary = name == 'mark_ledger'
+          ? ['sequence']
+          : name == 'rubrics'
+          ? ['id', 'revision']
+          : ['id'];
+      final seen = <String>{};
+      for (final row in tables[name]!) {
+        if (row.keys.toSet().difference(columns.toSet()).isNotEmpty ||
+            !row.keys.toSet().containsAll(required) ||
+            !row.keys.toSet().containsAll(primary)) {
+          throw const FormatException('Invalid backup columns');
+        }
+        final key = primary.map((column) => row[column]).join(':');
+        if (primary.any(
+              (column) => row[column] == null || row[column].toString().isEmpty,
+            ) ||
+            !seen.add(key)) {
+          throw const FormatException('Invalid or duplicate backup ID');
+        }
+        if (name == 'rubrics') {
+          final rubric = rubricFromJson(row['body_json'] as String);
+          if (rubric.id != row['id'] ||
+              rubric.revision != row['revision'] ||
+              rubric.title != row['title']) {
+            throw const FormatException('Rubric identity mismatch');
+          }
+        }
+        final keys = row.keys.toList();
+        _db.execute(
+          'INSERT INTO $name (${keys.join(',')}) VALUES (${List.filled(keys.length, '?').join(',')});',
+          [for (final column in keys) row[column]],
+        );
+      }
+    }
+    // Legacy assignments lack a course FK: enforce links on import explicitly.
+    if (_db
+            .select(
+              'SELECT 1 FROM assignments a LEFT JOIN courses c ON a.course_id = c.id WHERE c.id IS NULL LIMIT 1;',
+            )
+            .isNotEmpty ||
+        _db
+            .select(
+              'SELECT 1 FROM mark_ledger l JOIN assignments a ON a.id = l.assignment_id LEFT JOIN students s ON s.id = l.student_id AND s.course_id = a.course_id WHERE s.id IS NULL LIMIT 1;',
+            )
+            .isNotEmpty ||
+        _db.select('PRAGMA foreign_key_check;').isNotEmpty) {
+      throw const FormatException('Backup contains broken references');
+    }
+    for (final row in _db.select('SELECT * FROM mark_ledger;')) {
+      final entry = LedgerEntry.fromMap({
+        for (final key in row.keys) key: row[key],
+      });
+      if (entry.sequence <= 0) {
+        throw const FormatException('Invalid ledger sequence');
+      }
+    }
+    for (final assignment in _db.select(
+      'SELECT id, rubric_id, rubric_revision FROM assignments;',
+    )) {
+      final rubric = getRubricRevision(
+        assignment['rubric_id'] as String,
+        assignment['rubric_revision'] as int,
+      )!;
+      for (final entry in auditTrail(assignment['id'] as String)) {
+        final criterion = rubric.criteria
+            .where((c) => c.id == entry.criterionId)
+            .firstOrNull;
+        if (criterion == null ||
+            (entry.kind == MarkKind.level
+                ? !criterion.levels.any((level) => level.id == entry.levelId)
+                : entry.levelId != null)) {
+          throw const FormatException('Backup contains invalid mark');
+        }
+      }
+    }
+  }
 
   int get currentVersion {
     final result = _db.select('PRAGMA user_version;');
