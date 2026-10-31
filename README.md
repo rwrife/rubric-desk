@@ -45,7 +45,7 @@ Rubric grading tools live inside LMS platforms: accounts, cloud rosters, subscri
 
 - No other build framework: React Native, Expo, Kotlin Multiplatform, .NET MAUI, Unity, and native Swift-only are all prohibited — the app is Flutter (Windows + Android + iOS from one codebase)
 - Platform-native adaptive strategy A: Cupertino on iOS, Material 3 on Android, Fluent on Windows; never copy another OS's look. The scoring grid is a single `ScoringWorkspaceLayout` seam (grid + detail).
-- Real `AppStore/icon.png` generated via spark-media image is pending issue #6; no placeholder will be shipped.
+- Production `AppStore/icon.png` generated via spark-media OpenAI Images; platform icon resources generated from that source.
 - No accounts, no cloud sync, no backend, no analytics — the app performs zero network requests on any platform
 - No LMS/SIS integration, no gradebook import/export beyond plain CSV/text
 - No AI grading, no essay scoring, no OCR of handwritten work
@@ -68,7 +68,7 @@ Rubric grading tools live inside LMS platforms: accounts, cloud rosters, subscri
 
 ## Current status
 
-Scaffold: documentation and backlog only. No Flutter project skeleton, application code, tests, icon, or builds exist yet — the issue backlog defines the build order.
+Flutter app, scoring and export tests, and native platform icon assets are tracked. Windows release packaging remains pending; see GitHub Actions CI for exact build status.
 
 **Milestones:** M0 scaffold (done) → M1 Flutter skeleton + CI → M2 domain engine → M3 rubric authoring → M4 scoring workflow → M5 exports/backup → M6 icon + packaging/release → M7 store builds (later).
 
