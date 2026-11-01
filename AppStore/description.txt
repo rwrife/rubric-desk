@@ -2,4 +2,4 @@ Rubric Desk is an offline rubric-scoring workspace for teachers and tutors. Crea
 
 Export grade sheets as CSV, feedback as text, printable rubrics, or a versioned JSON backup. Data stays on your device unless you choose to export or share a file. No account, cloud service, AI grading, or LMS integration. Rubric Desk is not an official transcript system.
 
-Built for Windows, Android phones and tablets, and iPhone and iPad. Downloadable release packaging is still in progress; platform availability depends on published builds.
+Built for Windows, Android phones and tablets, and iPhone and iPad. Check published releases for available downloads; Android and iOS store distribution is not included.
