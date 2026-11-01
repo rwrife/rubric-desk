@@ -1,0 +1,86 @@
+name: Windows release
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing v* tag to publish
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag || github.ref }}
+          persist-credentials: false
+      - name: Validate release tag and checkout
+        shell: pwsh
+        env:
+          RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
+        run: |
+          if ($env:RELEASE_TAG -notmatch '^v[0-9]+\.[0-9]+\.[0-9]+(?:[-+][0-9A-Za-z.-]+)?$') { throw 'Expected a version tag beginning with v' }
+          git fetch --no-tags origin "refs/tags/$($env:RELEASE_TAG):refs/tags/$($env:RELEASE_TAG)"
+          if ($LASTEXITCODE -ne 0) { throw 'Tag not found on origin' }
+          $tagCommit = git rev-parse "refs/tags/$($env:RELEASE_TAG)^{commit}"
+          if ($LASTEXITCODE -ne 0 -or $tagCommit -ne (git rev-parse HEAD)) { throw 'Checkout does not match release tag' }
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: 3.47.7
+          cache: true
+      - run: flutter pub get --enforce-lockfile
+      - run: flutter analyze
+      - run: flutter test
+      - run: flutter build windows --release
+      - name: Smoke launch and package portable build
+        shell: pwsh
+        env:
+          RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
+        run: |
+          $bundle = 'build/windows/x64/runner/Release'
+          $exe = Join-Path $bundle 'rubric_desk.exe'
+          if (!(Test-Path $exe) -or !(Test-Path (Join-Path $bundle 'data/flutter_assets')) -or !(Test-Path (Join-Path $bundle 'flutter_windows.dll'))) { throw 'Incomplete Windows bundle' }
+          $app = Start-Process -FilePath (Resolve-Path $exe) -WorkingDirectory (Resolve-Path $bundle) -PassThru
+          try {
+            Start-Sleep -Seconds 10
+            $app.Refresh()
+            if ($app.HasExited) { throw "Windows launch smoke failed: exit $($app.ExitCode)" }
+            Write-Output 'Windows launch smoke: process alive after 10 seconds'
+          } finally {
+            if (!$app.HasExited) { Stop-Process -Id $app.Id -Force }
+          }
+          $archive = "rubric-desk-windows-$($env:RELEASE_TAG).zip"
+          Compress-Archive -Path (Join-Path $bundle '*') -DestinationPath $archive -Force
+          Add-Type -AssemblyName System.IO.Compression
+          $zip = [System.IO.Compression.ZipFile]::OpenRead((Resolve-Path $archive))
+          try {
+            $entries = @($zip.Entries | ForEach-Object FullName)
+            foreach ($required in @('rubric_desk.exe', 'flutter_windows.dll', 'data/flutter_assets/AssetManifest.bin')) {
+              if ($required -notin $entries) { throw "Archive missing $required" }
+            }
+          } finally { $zip.Dispose() }
+          Write-Output "Archive verified: $archive"
+      - name: Publish Windows archive
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          $archive = "rubric-desk-windows-$($env:RELEASE_TAG).zip"
+          gh release view $env:RELEASE_TAG --json tagName --jq .tagName *> $null
+          if ($LASTEXITCODE -eq 0) {
+            gh release upload $env:RELEASE_TAG $archive --clobber
+          } else {
+            gh release create $env:RELEASE_TAG $archive --verify-tag --title "Rubric Desk $($env:RELEASE_TAG)" --notes 'Portable Windows release. Extract entire archive, then run rubric_desk.exe. Data remains on your device.'
+          }
+          if ($LASTEXITCODE -ne 0) { throw 'GitHub release publish failed' }
+          $assetNames = @(gh release view $env:RELEASE_TAG --json assets --jq '.assets[].name')
+          if ($LASTEXITCODE -ne 0 -or $archive -notin $assetNames) { throw 'Release asset verification failed' }
+          Write-Output "Release asset verified: $archive"
